@@ -51,31 +51,15 @@ struct SearchWindow: View {
     
     @ViewBuilder
     var searchResultsView: some View {
-        Table(searchResults, selection: $selectedLyric) {
-            TableColumn("Lyric Provider", value: \.lyricType)
-            TableColumn("Song Name", value: \.songName)
-            TableColumn("Album Name", value: \.albumName)
-            TableColumn("Artist Name", value: \.artistName)
-        }
+        SearchResultsNSTableView(results: searchResults, selectedID: $selectedLyric)
     }
     
     @ViewBuilder
     var selectedLyricView: some View {
         if let selectedLyric, let selectedLyricLyric = searchResults.first(where: { $0.id == selectedLyric}) {
             HStack {
-                ScrollView {
-                    VStack(alignment: .leading) {
-                        ForEach(selectedLyricLyric.lyrics, id: \.id) { lyric in
-                            HStack {
-                                Text(formattedTimestamp(ms: lyric.startTimeMS))
-                                Text(lyric.words)
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .background(.black)
-                .frame(width: 400)
+                LyricPreviewNSTableView(lyrics: selectedLyricLyric.lyrics)
+                              .frame(width: 400)
                 Spacer()
                 Button {
                     let cleanLyrics = NetworkFetchReturn(lyrics: selectedLyricLyric.lyrics, colorData: nil).processed(withSongName: trackName, duration: viewmodel.duration).lyrics
