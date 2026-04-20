@@ -24,7 +24,7 @@ import MediaRemoteAdapter
     static let shared = ViewModel()
     
     // Apple Music Tahoe broken AppleScript workaround
-    let musicController = MediaController(bundleIdentifier: "com.apple.Music")
+    let musicController = MediaController()
 //    var appleMusicUniqueIdentifier: String?
 
     var currentlyPlaying: String?
@@ -47,7 +47,7 @@ import MediaRemoteAdapter
         return formatter.string(from: TimeInterval(totalSeconds)) ?? "0:00"
     }
     private func initAppleMusicWorkaround() {
-        musicController.onTrackInfoReceived = { data in
+        musicController.onTrackInfoReceived = { (data: TrackInfo?) in
             print("Track info received")
             Task { @MainActor in
 //                if self.appleMusicUniqueIdentifier == data.payload.uniqueIdentifier {
