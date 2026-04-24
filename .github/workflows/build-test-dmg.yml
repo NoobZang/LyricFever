@@ -1,0 +1,118 @@
+name: Build Test DMG
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-dmg:
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    env:
+      PROJECT_PATH: Lyric Fever.xcodeproj
+      SCHEME: SpotifyLyricsInMenubar
+      CONFIGURATION: Release
+      DERIVED_DATA_PATH: ${{ github.workspace }}/DerivedData
+      BUILD_PRODUCTS_PATH: ${{ github.workspace }}/DerivedData/Build/Products/Release
+      APP_NAME: Lyric Fever.app
+      DMG_NAME: Lyric-Fever-test-${{ github.run_number }}.dmg
+
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v4
+
+      - name: Show Xcode Version
+        run: xcodebuild -version
+
+      - name: Resolve Swift Packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages"
+
+      - name: Build Release App
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME" \
+            -configuration "$CONFIGURATION" \
+            -destination "platform=macOS,arch=arm64" \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            build \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=YES \
+            CODE_SIGNING_ALLOWED=YES \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            ARCHS=arm64 \
+            EXCLUDED_ARCHS=x86_64 \
+            SWIFT_VERSION=5.9 \
+            2>&1 | tee /tmp/build.log | grep -E "error:|warning:|Build succeeded|BUILD FAILED" || true
+          if grep -q "BUILD FAILED" /tmp/build.log; then
+            echo "=== ERRORS ==="
+            grep "error:" /tmp/build.log | grep -v "note:" | head -50
+            exit 1
+          fi
+
+      - name: Find App Path
+        run: find "$DERIVED_DATA_PATH/Build/Products" -name "*.app" -maxdepth 3
+
+      - name: Re-sign App Bundle
+        run: |
+          APP_PATH="$BUILD_PRODUCTS_PATH/$APP_NAME"
+
+          find "$APP_PATH/Contents/Frameworks" \
+            \( -name "*.framework" -o -name "*.dylib" \) | \
+          while read f; do
+            echo "Signing: $f"
+            codesign --force --sign - "$f"
+          done
+
+          find "$APP_PATH/Contents/XPCServices" \
+            -name "*.xpc" 2>/dev/null | \
+          while read f; do
+            echo "Signing XPC: $f"
+            codesign --force --sign - "$f"
+          done
+
+          codesign --force --deep --sign - "$APP_PATH"
+
+          codesign -vvv "$APP_PATH"
+
+      - name: Package DMG
+        run: |
+          APP_PATH="$BUILD_PRODUCTS_PATH/$APP_NAME"
+          STAGING_DIR="$RUNNER_TEMP/dmg"
+          DMG_PATH="$GITHUB_WORKSPACE/$DMG_NAME"
+
+          mkdir -p "$STAGING_DIR"
+          cp -R "$APP_PATH" "$STAGING_DIR/"
+          ln -s /Applications "$STAGING_DIR/Applications"
+
+          hdiutil create \
+            -volname "Lyric Fever Test" \
+            -srcfolder "$STAGING_DIR" \
+            -ov \
+            -format UDZO \
+            "$DMG_PATH"
+
+          echo "DMG_PATH=$DMG_PATH" >> "$GITHUB_ENV"
+
+      - name: Upload DMG Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lyric-fever-test-dmg
+          path: ${{ env.DMG_PATH }}
+          if-no-files-found: error
