@@ -147,7 +147,8 @@ import MediaRemoteAdapter
 
     var displayKaraoke: Bool {
         get {
-            showLyrics && isPlaying && userDefaultStorage.karaoke && !karaokeModeHovering && (currentlyPlayingLyricsIndex != nil)
+            // Let fullscreen own lyric presentation while it is active.
+            showLyrics && isPlaying && userDefaultStorage.karaoke && !fullscreen && !karaokeModeHovering && (currentlyPlayingLyricsIndex != nil)
         }
         set {
             
@@ -1212,4 +1213,3 @@ extension ViewModel {
     }
 }
 #endif
-
