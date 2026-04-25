@@ -537,70 +537,135 @@ struct MenubarWindowView: View {
             openURL(URL(string: "https://buymeacoffee.com/aviwadhwalyricfever")!)
         }
     }
+
+    var footerControlFillStyle: AnyShapeStyle {
+        if let currentBackground = viewmodel.currentBackground {
+            return AnyShapeStyle(currentBackground)
+        } else {
+            return AnyShapeStyle(Color.white)
+        }
+    }
+
+    var footerControlBrightness: Double {
+        viewmodel.currentBackground == nil ? 0 : 0.05
+    }
+
+    var footerControlOpacity: Double {
+        viewmodel.currentBackground == nil ? 0.18 : 0.55
+    }
+
+    var footerControlWidth: CGFloat {
+        88
+    }
+
+    var footerControlHeight: CGFloat {
+        38
+    }
+
+    @ViewBuilder
+    func footerControlBackground(cornerRadius: CGFloat = 10) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(footerControlFillStyle)
+            .brightness(footerControlBrightness)
+            .opacity(footerControlOpacity)
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.12))
+            }
+            .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+    }
+
+    @ViewBuilder
+    var moreOptionsLabel: some View {
+        Text("...")
+            .font(.system(size: 18, weight: .bold, design: .rounded))
+            .foregroundStyle(.white.opacity(0.95))
+            .frame(width: footerControlWidth, height: footerControlHeight)
+            .background {
+                footerControlBackground()
+            }
+    }
+
+    @ViewBuilder
+    var quitButtonLabel: some View {
+        Text("Quit")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.95))
+            .frame(width: footerControlWidth, height: footerControlHeight)
+            .background {
+                footerControlBackground()
+            }
+    }
     
     @ViewBuilder
     var systemControlView: some View {
-        HStack {
-            if #available(macOS 26.0, *) {
-                Menu {
-                    otherOptions
-//                        .foregroundStyle(viewmodel.currentBackground ?? .primary)
-                } label: {
-
-                        Text("...")
+        ZStack {
+            HStack(spacing: 8) {
+                if #available(macOS 26.0, *) {
+                    Menu {
+                        otherOptions
+                    } label: {
+                        moreOptionsLabel
+                    }
+                    .fixedSize()
+                    .environment(\.colorScheme, .dark)
+                    .menuIndicator(.hidden)
+                    .onHover { isHovering in
+                        if isHovering {
+                            currentHoveredItem = .moreOptions
+                        } else {
+                            currentHoveredItem = .none
+                        }
+                    }
+                } else {
+                    Menu {
+                        otherOptions
+                            .foregroundStyle(viewmodel.currentBackground ?? .primary)
+                    } label: {
+                        moreOptionsLabel
+                    }
+                    .fixedSize()
+                    .environment(\.colorScheme, .dark)
+                    .menuIndicator(.hidden)
+                    .onHover { isHovering in
+                        if isHovering {
+                            currentHoveredItem = .moreOptions
+                        } else {
+                            currentHoveredItem = .none
+                        }
+                    }
                 }
-                .environment(\.colorScheme, .dark)
-                .menuIndicator(.hidden)
+                if viewmodel.airplayDelay {
+                    Image(systemName: "airplayaudio")
+                        .opacity(0.8)
+                }
+                if viewmodel.spotifyConnectDelay {
+                    Image(systemName: "tortoise")
+                        .opacity(0.8)
+                }
+                Spacer()
+                Button {
+                    NSApplication.shared.terminate(nil)
+                } label: {
+                    quitButtonLabel
+                }
+                .fixedSize()
+                .buttonStyle(.plain)
                 .onHover { isHovering in
                     if isHovering {
-                        currentHoveredItem = .moreOptions
+                        currentHoveredItem = .quit
                     } else {
                         currentHoveredItem = .none
                     }
                 }
-            } else {
-                Menu {
-                    otherOptions
-                        .foregroundStyle(viewmodel.currentBackground ?? .primary)
-                } label: {
-
-                        Text("...")
-                }
-                .frame(width: 30)
-                .environment(\.colorScheme, .dark)
-                .menuIndicator(.hidden)
-                .onHover { isHovering in
-                    if isHovering {
-                        currentHoveredItem = .moreOptions
-                    } else {
-                        currentHoveredItem = .none
-                    }
-                }
             }
-            if viewmodel.airplayDelay {
-                Image(systemName: "airplayaudio")
-                    .opacity(0.8)
-            }
-            if viewmodel.spotifyConnectDelay {
-                Image(systemName: "tortoise")
-                    .opacity(0.8)
-            }
-            Spacer()
             Text(currentHoveredItem.description)
                 .minimumScaleFactor(0.8)
                 .textCase(.uppercase)
                 .font(.system(size: 12, weight: .light, design: .monospaced))
-            Spacer()
-            Button("Quit") {
-                NSApplication.shared.terminate(nil)
-            }
-            .onHover { isHovering in
-                if isHovering {
-                    currentHoveredItem = .quit
-                } else {
-                    currentHoveredItem = .none
-                }
-            }
+                .lineLimit(1)
+                .allowsHitTesting(false)
+                .padding(.horizontal, footerControlWidth + 24)
         }
         .padding(.top, 8)
     }
@@ -731,4 +796,3 @@ struct MenubarWindowView: View {
         }
     }
 }
-
