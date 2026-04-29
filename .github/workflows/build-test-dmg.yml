@@ -30,6 +30,22 @@ jobs:
       - name: Show Xcode Version
         run: xcodebuild -version
 
+      - name: Cache SPM Packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/SourcePackages
+          key: spm-macos15-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            spm-macos15-
+
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/DerivedData
+          key: derived-macos15-${{ hashFiles('**/project.pbxproj') }}
+          restore-keys: |
+            derived-macos15-
+
       - name: Resolve Swift Packages
         run: |
           xcodebuild -resolvePackageDependencies \
