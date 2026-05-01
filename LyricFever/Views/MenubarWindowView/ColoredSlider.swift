@@ -58,10 +58,14 @@ final class ColoredSliderCell: NSSliderCell {
 
     override func knobRect(flipped: Bool) -> NSRect {
         var rect = super.knobRect(flipped: flipped)
-        // ensure square knob rect for a circular knob
-        let size = min(rect.width, rect.height)
-        rect = NSRect(x: rect.midX - size / 2, y: rect.midY - size / 2,
-                      width: size, height: size)
+        let size = min(rect.width, rect.height) * 0.88
+        let verticalOffset: CGFloat = flipped ? -2 : 2
+        rect = NSRect(
+            x: rect.midX - size / 2,
+            y: rect.midY - size / 2 + verticalOffset,
+            width: size,
+            height: size
+        )
         return rect
     }
 }
