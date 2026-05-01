@@ -6,7 +6,45 @@
 import SwiftUI
 
 final class ColoredSliderCell: NSSliderCell {
-    var customKnobColor: NSColor = .white
+    var sliderColor: NSColor = .white
+
+    override func drawBar(inside rect: NSRect, flipped: Bool) {
+        let trackHeight: CGFloat = 4
+        let trackRect = NSRect(
+            x: rect.minX,
+            y: rect.midY - trackHeight / 2,
+            width: rect.width,
+            height: trackHeight
+        )
+        let backgroundPath = NSBezierPath(
+            roundedRect: trackRect,
+            xRadius: trackHeight / 2,
+            yRadius: trackHeight / 2
+        )
+        sliderColor.withAlphaComponent(0.28).setFill()
+        backgroundPath.fill()
+
+        let valueRange = maxValue - minValue
+        guard valueRange > 0 else { return }
+
+        let ratio = min(max((doubleValue - minValue) / valueRange, 0), 1)
+        let fillWidth = trackRect.width * CGFloat(ratio)
+        guard fillWidth > 0 else { return }
+
+        let fillRect = NSRect(
+            x: trackRect.minX,
+            y: trackRect.minY,
+            width: fillWidth,
+            height: trackRect.height
+        )
+        let fillPath = NSBezierPath(
+            roundedRect: fillRect,
+            xRadius: trackHeight / 2,
+            yRadius: trackHeight / 2
+        )
+        sliderColor.setFill()
+        fillPath.fill()
+    }
 
     override func drawKnob(_ knobRect: NSRect) {
         let diameter = min(knobRect.width, knobRect.height)
@@ -14,7 +52,7 @@ final class ColoredSliderCell: NSSliderCell {
         let y = knobRect.midY - diameter / 2
         let circleRect = NSRect(x: x, y: y, width: diameter, height: diameter)
         let path = NSBezierPath(ovalIn: circleRect)
-        customKnobColor.setFill()
+        sliderColor.setFill()
         path.fill()
     }
 
@@ -38,35 +76,46 @@ struct ColoredSlider: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSSlider {
-        let slider = NSSlider(value: value,
-                             minValue: range.lowerBound,
-                             maxValue: range.upperBound,
-                             target: context.coordinator,
-                             action: #selector(Coordinator.sliderChanged))
+        let slider = NSSlider(
+            value: clampedValue,
+            minValue: range.lowerBound,
+            maxValue: range.upperBound,
+            target: context.coordinator,
+            action: #selector(Coordinator.sliderChanged)
+        )
         let cell = ColoredSliderCell()
-        cell.customKnobColor = NSColor(color)
+        cell.sliderColor = NSColor(color)
         slider.cell = cell
-        slider.trackFillColor = NSColor(color)
+        configure(slider, coordinator: context.coordinator)
         return slider
     }
 
     func updateNSView(_ nsView: NSSlider, context: Context) {
         let newColor = NSColor(color)
-        if nsView.trackFillColor != newColor {
-            nsView.trackFillColor = newColor
-        }
+        context.coordinator.parent = self
+        configure(nsView, coordinator: context.coordinator)
         if let cell = nsView.cell as? ColoredSliderCell,
-           cell.customKnobColor != newColor {
-            cell.customKnobColor = newColor
+           cell.sliderColor != newColor {
+            cell.sliderColor = newColor
             nsView.needsDisplay = true
-        }
-        if nsView.doubleValue != value {
-            nsView.doubleValue = value
         }
     }
 
+    private func configure(_ slider: NSSlider, coordinator: Coordinator) {
+        slider.minValue = range.lowerBound
+        slider.maxValue = range.upperBound
+        slider.target = coordinator
+        slider.action = #selector(Coordinator.sliderChanged)
+        slider.doubleValue = clampedValue
+        slider.isContinuous = true
+    }
+
+    private var clampedValue: Double {
+        min(max(value, range.lowerBound), range.upperBound)
+    }
+
     final class Coordinator: NSObject {
-        let parent: ColoredSlider
+        var parent: ColoredSlider
 
         init(_ parent: ColoredSlider) {
             self.parent = parent
