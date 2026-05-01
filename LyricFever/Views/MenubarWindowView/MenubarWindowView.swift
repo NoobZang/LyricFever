@@ -678,15 +678,11 @@ struct MenubarWindowView: View {
         HStack {
             Image(systemName: "speaker.wave.3", variableValue: Double(viewmodel.currentVolume)/100)
                 .frame(width: 30)
-                Slider(value: volumeBinding, in: 0...100) {
-                    Text("Volume")
-                }
-                .labelsHidden()
+            ColoredSlider(value: volumeBinding, range: 0...100, color: viewmodel.currentBackground ?? .secondary)
                 .frame(width: 160)
             Text("\(viewmodel.currentVolume)")
                 .frame(width: 23)
         }
-        .tint(.secondary)
     }
     
     var body: some View {
