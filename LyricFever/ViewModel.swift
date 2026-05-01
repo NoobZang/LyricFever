@@ -147,8 +147,7 @@ import MediaRemoteAdapter
 
     var displayKaraoke: Bool {
         get {
-            // Let fullscreen own lyric presentation while it is active.
-            showLyrics && isPlaying && userDefaultStorage.karaoke && !fullscreen && !karaokeModeHovering && (currentlyPlayingLyricsIndex != nil)
+            showLyrics && isPlaying && userDefaultStorage.karaoke && !isFullscreenSpaceActive && !karaokeModeHovering && (currentlyPlayingLyricsIndex != nil)
         }
         set {
             
@@ -182,9 +181,46 @@ import MediaRemoteAdapter
     var translatedLyric: [String] = []
     var showLyrics = true
     #if os(macOS)
-    var fullscreen = false
+    var fullscreen = false {
+        didSet {
+            guard oldValue != fullscreen else { return }
+            if fullscreen {
+                isFullscreenSpaceActive = true
+                addFullscreenSpaceObserver()
+            } else {
+                isFullscreenSpaceActive = false
+                removeFullscreenSpaceObserver()
+            }
+        }
+    }
+    var isFullscreenSpaceActive = false
+    private var fullscreenSpaceObserver: NSObjectProtocol?
     var spotifyConnectDelay: Bool = false
     var airplayDelay: Bool = false
+
+    private func addFullscreenSpaceObserver() {
+        removeFullscreenSpaceObserver()
+        refreshFullscreenSpaceActive()
+        fullscreenSpaceObserver = NSWorkspace.shared.notificationCenter
+            .addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification,
+                         object: nil, queue: .main) { [weak self] _ in
+                self?.refreshFullscreenSpaceActive()
+            }
+    }
+
+    private func removeFullscreenSpaceObserver() {
+        fullscreenSpaceObserver.map {
+            NSWorkspace.shared.notificationCenter.removeObserver($0)
+        }
+        fullscreenSpaceObserver = nil
+    }
+
+    private func refreshFullscreenSpaceActive() {
+        guard fullscreen else { return }
+        isFullscreenSpaceActive = NSApp.windows
+            .first { $0.identifier?.rawValue == "fullscreen" }
+            .map { $0.isOnActiveSpace } ?? true
+    }
     #endif
     var isFetchingTranslation = false
     var translationExists: Bool { !translatedLyric.isEmpty}
